@@ -23,7 +23,7 @@ var pr = {};
 
         this._startNodes = new Set(); // nodes without incoming edges
         this._cycleStart = -1;
-        this._cycleStartNodes = []; // start here if there are no nodes without incoming edges
+        this._cycleStartNodes = new Set(); // start here if there are no nodes without incoming edges
         this._modified = true; // check for caching ranking
         this._cachedRanking = []; // cached ranking
         this._queriesMade = new Set(); // queries made
@@ -60,10 +60,10 @@ var pr = {};
             if (isCycleNode) {
                 cycleNodes.add(node);
             }
+            return isCycleNode;
         };
         go(prt, node, node, 0);
-        console.log(Array.from(cycleNodes));
-        return Array.from(cycleNodes);
+        return cycleNodes;
     }
 
     /**
@@ -84,12 +84,12 @@ var pr = {};
         
         // if about to form a cycle
         if (this._startNodes.size === 1 && this._startNodes.has(b)) {
-            this._cycleStart = b;
-            this._cycleStartNodes = findCycleNodes(this, b);
+            this._cycleStart = a;
+            this._cycleStartNodes = findCycleNodes(this, a);
         }
         this._startNodes.delete(b);
         this._modified = true;
-        this._queriesMade.add('f' + a + 't' + b);
+        this._queriesMade.add(a + '->' + b);
     };
 
     /**
@@ -110,35 +110,43 @@ var pr = {};
         if (this._startNodes.size > 0) {
             startNodes = Array.from(this._startNodes);
         } else {
-            startNodes = this._cycleStartNodes.splice();
-            console.log(startNodes);
+            startNodes = Array.from(this._cycleStartNodes);
         }
         
-        var nodes = startNodes.map(function(node) {
-            return {
-                node: node,
-                depth: 0
-            };
-        });
+        var prt = this;
+        var runKahns = function(prt, startNodes) {        
+            var nodes = startNodes.map(function(node) {
+                return {
+                    node: node,
+                    depth: 0
+                };
+            });
 
-        // basically Kahn's algorithm for topological sort (but without removing edges)
-        while (nodes.length > 0) {
-            var node = nodes.shift();
-            if (seen.has(node.node)) { continue; }
-            seen.add(node.node);
-            if (!ranking[node.depth]) {
-                ranking[node.depth] = [];
-            }
-            ranking[node.depth].push(node.node);
-            if (this.edges[node.node]) {
-                this.edges[node.node].forEach(function(to) {
-                    if (seen.has(to)) { return; }
-                    nodes.push({
-                        node: to,
-                        depth: node.depth + 1
+            // basically Kahn's algorithm for topological sort (but without removing edges)
+            while (nodes.length > 0) {
+                var node = nodes.shift();
+                if (seen.has(node.node)) { continue; }
+                seen.add(node.node);
+                if (!ranking[node.depth]) {
+                    ranking[node.depth] = [];
+                }
+                ranking[node.depth].push(node.node);
+                if (prt.edges[node.node]) {
+                    prt.edges[node.node].forEach(function(to) {
+                        if (seen.has(to)) { return; }
+                        nodes.push({
+                            node: to,
+                            depth: node.depth + 1
+                        });
                     });
-                });
+                }
             }
+        };
+        
+        runKahns(this, startNodes);
+        if (seen.size !== this.size) { // If we haven't seen all nodes, then run it again with the cycle
+            startNodes = Array.from(this._cycleStartNodes);
+            runKahns(this, startNodes);
         }
         
         this._modified = false;
@@ -147,8 +155,8 @@ var pr = {};
     };
     
     function hasMadeQuery(prt, from, to) {
-        return prt._queriesMade.has('f' + from + 't' + to) ||
-                prt._queriesMade.has('f' + to + 'f' + from);
+        return prt._queriesMade.has(from + '->' + to) ||
+                prt._queriesMade.has(to + '->' + from);
     }
     
     /**
@@ -202,6 +210,7 @@ prt.addEdgeTopo(3, 0);
 prt.addEdgeTopo(3, 4);
 prt.addEdgeTopo(3, 5);
 prt.addEdgeTopo(1, 3);
+prt.addNodeTopo();
 console.log(prt.getRankingTopo());
 console.log(prt.getQueryTopo());
 
