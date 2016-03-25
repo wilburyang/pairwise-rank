@@ -200,7 +200,7 @@ var pr = {};
 })();
 
 // test
-var prt = new pr.PairwiseRankTopo();
+/*var prt = new pr.PairwiseRankTopo();
 for (var i = 0; i < 6; i++) {
     prt.addNodeTopo();
 }
@@ -211,7 +211,8 @@ prt.addEdgeTopo(3, 4);
 prt.addEdgeTopo(3, 5);
 prt.addEdgeTopo(1, 3);
 prt.addNodeTopo();
+prt.addEdgeTopo(6, 0);
 console.log(prt.getRankingTopo());
-console.log(prt.getQueryTopo());
+console.log(prt.getQueryTopo());*/
 
-//module.exports = pr;
+module.exports = pr;
